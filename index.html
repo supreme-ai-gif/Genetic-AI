@@ -517,7 +517,7 @@ async function sendMessage(){
   try{
     const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method:'POST',
-      headers:{ "Content-Type":"application/json", "Authorization":"Bearer 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" },
+      headers:{ "Content-Type":"application/json", "Authorization":"Bearer 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" },
       body: JSON.stringify({
         model: "google/gemma-2-9b-it",
         messages: [{ role: "system", content: "You are GENETIC AI, a friendly assistant. Reply concisely and kindly." }, { role: "user", content: txt }]
