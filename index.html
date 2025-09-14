@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>GENETIC AI</title>
+
+  <!-- ===== FIREBASE (PLACEHOLDERS AT TOP / or your real config) =====
+       Replace these values with your Firebase project config if needed.
+  -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+  <script>
+    // <-- Replace the values below with your Firebase config if different -->
+    var firebaseConfig = {
+      apiKey: "AIzaSyCTHzW_H6NGje1eabCVxpzjC_HBfO2yrSA",
+      authDomain: "genetic-ai.firebaseapp.com",
+      projectId: "genetic-ai",
+      storageBucket: "genetic-ai.firebasestorage.app",
+      messagingSenderId: "470283209918",
+      appId: "1:470283209918:web:80f6043ab283713fb362ef"
+    };
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+  </script>
+
+  <style>
+    /* Only black & blue palette as requested */
+    :root{
+      --bg-black:#000;
+      --panel:#0b0b0b;
+      --muted:#09121a;
+      --blue-1:#00aaff;
+      --blue-2:#0077ff;
+      --card:#0f1113;
+      --accent-shadow: 0 0 18px rgba(0,170,255,0.18);
+    }
+
+    html,body{height:100%;margin:0;background:var(--bg-black);color:#eaf6ff;font-family:Inter, system-ui, Arial, sans-serif;}
+
+    /* SPLASH */
+    #splash{
+      position:fixed;inset:0;
+      display:flex;align-items:center;justify-content:center;flex-direction:column;
+      background:linear-gradient(135deg,#000,#021229);
+      z-index:1200;
+    }
+    #splash h1{
+      font-size:48px;
+      letter-spacing:2px;
+      color:var(--blue-1);
+      text-shadow:0 0 12px var(--blue-1),0 0 30px var(--blue-2);
+      margin:0;
+      animation:glow 1.8s infinite alternate;
+    }
+    @keyframes glow{
+      from{text-shadow:0 0 8px var(--blue-1),0 0 20px var(--blue-2); transform: translateY(0)}
+      to{text-shadow:0 0 20px var(--blue-1),0 0 40px var(--blue-2); transform: translateY(-4px)}
+    }
+
+    /* APP LAYOUT */
+    .app{
+      display:flex;height:100vh;width:100vw;overflow:hidden;
+    }
+
+    /* SIDEBAR */
+    .sidebar{
+      position:fixed;left:-280px;top:0;height:100%;width:280px;
+      background:linear-gradient(180deg,var(--panel),#05060a);
+      box-shadow:2px 0 30px rgba(0,0,0,0.8);
+      padding:18px;box-sizing:border-box;transition:left .28s ease;z-index:1000;
+    }
+    .sidebar.open{left:0}
+    .sidebar h2{color:var(--blue-1);margin:4px 0 12px 0;font-size:18px}
+    .sidebar .btn{display:block;width:100%;padding:10px;border-radius:10px;border:0;background:linear-gradient(90deg,var(--blue-1),var(--blue-2));color:#00101a;font-weight:700;cursor:pointer;margin-bottom:10px}
+    .sidebar .link{display:block;padding:10px;border-radius:8px;background:transparent;color:#bcdff7;margin-bottom:8px;cursor:pointer}
+    .sidebar .link:hover{background:rgba(0,120,255,0.06)}
+    .sidebar .section{margin-top:12px;font-size:13px;color:#9fcfff}
+
+    /* MAIN CONTENT */
+    .main{
+      flex:1;display:flex;flex-direction:column;height:100vh;
+      margin-left:0; /* sidebar is overlay, not pushing content */
+    }
+    header.appbar{
+      display:flex;align-items:center;gap:12px;padding:12px 18px;background:transparent;
+      border-bottom:1px solid rgba(255,255,255,0.02);
+      box-shadow:var(--accent-shadow);
+      position:relative;z-index:300;
+    }
+    .menu-btn{
+      width:44px;height:44px;border-radius:10px;border:0;background:linear-gradient(180deg,var(--panel),#05060a);
+      display:flex;align-items:center;justify-content:center;color:var(--blue-1);font-size:20px;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,0.6);
+    }
+    .title{
+      font-size:20px;color:var(--blue-1);text-shadow:0 0 10px rgba(0,140,255,0.12);
+      font-weight:700;
+    }
+
+    /* CHAT AREA */
+    .chat-wrap{flex:1;display:flex;flex-direction:column;padding:18px;gap:12px}
+    #chat-box{
+      flex:1;background:linear-gradient(180deg,#030405,#07090b);
+      border-radius:12px;padding:16px;overflow:auto;border:1px solid rgba(0,110,255,0.06);
+      box-shadow:0 6px 20px rgba(0,0,0,0.6);
+    }
+    .msg{max-width:78%;padding:10px 14px;border-radius:12px;margin:10px 0;color:#eaf6ff;word-break:break-word;position:relative}
+    .msg.user{margin-left:auto;background:linear-gradient(90deg,var(--blue-1),var(--blue-2));color:#001018}
+    .msg.bot{margin-right:auto;background:rgba(0,0,0,0.35);border:1px solid rgba(0,150,255,0.06)}
+    .msg-time{display:block;font-size:10px;color:#88bfe8;margin-top:4px;text-align:right}
+
+    /* INPUT area fixed bottom */
+    .composer{
+      display:flex;align-items:center;gap:12px;padding:12px;background:linear-gradient(180deg,#020405,#050609);
+      border-top:1px solid rgba(255,255,255,0.02);
+    }
+    .composer input{
+      flex:1;padding:14px 16px;border-radius:14px;border:2px solid rgba(0,120,255,0.16);
+      background:#07080a;color:#eaf6ff;outline:none;font-size:15px;box-shadow:0 6px 18px rgba(0,0,0,0.6) inset;
+    }
+    .composer input::placeholder{color:#88bfe8}
+    .send-btn{
+      min-width:64px;padding:10px 14px;border-radius:12px;border:0;background:linear-gradient(90deg,var(--blue-1),var(--blue-2));color:#001018;font-weight:700;cursor:pointer;
+      box-shadow:0 8px 18px rgba(0,120,255,0.12);
+    }
+
+    /* LOGIN modal (compact) */
+    .login-modal{
+      position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:1200;
+      background:linear-gradient(180deg,var(--panel),#05060a);padding:18px;border-radius:12px;width:320px;box-shadow:0 10px 40px rgba(0,0,0,0.7);display:none;
+    }
+    .login-modal h3{margin:0 0 10px 0;color:var(--blue-1)}
+    .login-modal input{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:#060709;color:#eaf6ff;margin-bottom:8px}
+    .login-modal .small{font-size:13px;color:#a6d9ff;margin-top:8px;text-align:center}
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);display:none;z-index:1100}
+
+    /* conversations list area in sidebar */
+    .convos-list{margin-top:10px;display:flex;flex-direction:column;gap:8px}
+    .convo-item{padding:10px;border-radius:8px;background:transparent;color:#bcdff7;cursor:pointer}
+    .convo-item:hover{background:rgba(0,120,255,0.04)}
+
+    /* typing dots */
+    .dots {display:inline-block}
+    .dots span{display:inline-block;width:6px;height:6px;margin:0 1px;background:var(--blue-1);border-radius:50%;animation:blink 1.4s infinite}
+    .dots span:nth-child(2){animation-delay:0.2s}
+    .dots span:nth-child(3){animation-delay:0.4s}
+    @keyframes blink{0%,80%,100%{opacity:0.2}40%{opacity:1}}
+
+    /* small responsive tweaks */
+    @media (max-width:640px){
+      .sidebar{width:230px}
+      .login-modal{width:280px}
+      #splash h1{font-size:36px}
+    }
+  </style>
+</head>
+<body>
+  <!-- Splash -->
+  <div id="splash"><h1>GENETIC AI</h1></div>
+
+  <!-- Sidebar -->
+  <div id="sidebar" class="sidebar" aria-hidden="true">
+    <h2>Menu</h2>
+    <button class="btn" id="new-convo-btn">+ New Conversation</button>
+    <div class="section">Conversations</div>
+    <div id="convos" class="convos-list"></div>
+    <div class="section">Account</div>
+    <div id="account-area">
+      <div class="link" id="open-login">Sign In / Sign Up</div>
+      <div class="link" id="signout-link" style="display:none">Sign Out</div>
+      <div class="link" id="delete-memory" style="display:none">Delete Memory</div>
+      <div style="height:10px"></div>
+      <div class="section" id="account-name">Not signed in</div>
+    </div>
+  </div>
+
+  <div id="overlay" class="overlay"></div>
+  <div id="login-modal" class="login-modal" role="dialog" aria-modal="true">
+    <h3>Sign In or Create Account</h3>
+    <input id="email" type="email" placeholder="Email (you@company.com)" />
+    <input id="password" type="password" placeholder="Password" />
+    <div style="display:flex;gap:8px;">
+      <button id="signup-btn" style="flex:1">Sign Up</button>
+      <button id="signin-btn" style="flex:1;background:linear-gradient(90deg,var(--blue-1),var(--blue-2)); color:#001018">Sign In</button>
+    </div>
+    <div class="small">Your account is stored locally on this device only.</div>
+  </div>
+
+  <!-- App -->
+  <div class="app">
+    <div class="main">
+      <header class="appbar">
+        <button id="menu-btn" class="menu-btn" aria-label="Open menu">☰</button>
+        <div class="title">GENETIC AI</div>
+      </header>
+      <div class="chat-wrap">
+        <div id="chat-box" aria-live="polite"></div>
+        <div class="composer">
+          <input id="input" type="text" placeholder="Type a message..." autocomplete="off" />
+          <button id="send" class="send-btn">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+<script>
+/* ====== State & storage keys ====== */
+const sidebar = document.getElementById('sidebar');
+const menuBtn = document.getElementById('menu-btn');
+const overlay = document.getElementById('overlay');
+const loginModal = document.getElementById('login-modal');
+const openLoginLink = document.getElementById('open-login');
+const signoutLink = document.getElementById('signout-link');
+const deleteMemoryLink = document.getElementById('delete-memory');
+const accountName = document.getElementById('account-name');
+const convosEl = document.getElementById('convos');
+const newConvoBtn = document.getElementById('new-convo-btn');
+
+const splash = document.getElementById('splash');
+const chatBox = document.getElementById('chat-box');
+const input = document.getElementById('input');
+const sendBtn = document.getElementById('send');
+
+// local storage keys (still used for guest mode)
+const USER_KEY = 'genetic_user';
+const CONVOS_PREFIX = 'genetic_convos_';
+
+let currentUser = null;
+let currentConvoId = null;
+let currentConvoIsRemote = false;
+
+// Helpers
+function uid() { return 'c_' + Math.random().toString(36).slice(2,10); }
+function saveConvosForUserLocal(email, convos){ localStorage.setItem(CONVOS_PREFIX + email, JSON.stringify(convos)); }
+function loadConvosForUserLocal(email){ try{return JSON.parse(localStorage.getItem(CONVOS_PREFIX + email))||[];}catch(e){return [];} }
+
+function showSidebar(open){
+  if(open){ sidebar.classList.add('open'); sidebar.setAttribute('aria-hidden','false'); }
+  else { sidebar.classList.remove('open'); sidebar.setAttribute('aria-hidden','true'); }
+}
+
+/* ======= MENU behavior ======= */
+menuBtn.addEventListener('click', ()=> showSidebar(!sidebar.classList.contains('open')));
+
+newConvoBtn.addEventListener('click', async ()=>{
+  if(!currentUser){ alert('Sign in to save conversations. Guest mode available for instant chat.'); showSidebar(false); return; }
+  const docRef = await firebase.firestore().collection('users').doc(currentUser.uid).collection('convos').add({
+    topic: '(untitled)',
+    created: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  currentConvoId = docRef.id;
+  currentConvoIsRemote = true;
+  renderConvos();
+  openConvo(currentConvoId);
+  showSidebar(false);
+});
+
+convosEl.addEventListener('click', (e)=>{
+  const item = e.target.closest('.convo-item');
+  if(!item) return;
+  const id = item.dataset.id;
+  openConvo(id);
+  showSidebar(false);
+});
+
+openLoginLink.addEventListener('click', ()=>{ loginModal.style.display='block'; overlay.style.display='block'; showSidebar(false); });
+overlay.addEventListener('click', ()=>{ loginModal.style.display='none'; overlay.style.display='none'; });
+
+/* ======= AUTH ======= */
+document.getElementById('signup-btn').addEventListener('click', async ()=>{
+  const email = document.getElementById('email').value.trim();
+  const pass = document.getElementById('password').value.trim();
+  if(!email || !pass){ alert('Provide email and password'); return; }
+  try{
+    const res = await firebase.auth().createUserWithEmailAndPassword(email, pass);
+    const user = res.user;
+    localStorage.setItem(USER_KEY, JSON.stringify({ email: user.email, uid: user.uid }));
+    currentUser = { email: user.email, uid: user.uid };
+    await firebase.firestore().collection('users').doc(user.uid).set({ createdAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    updateAccountUI();
+    loginModal.style.display='none'; overlay.style.display='none';
+    alert('Account created and signed in.');
+    renderConvos();
+  }catch(err){ alert('Sign up error: ' + err.message); }
+});
+
+document.getElementById('signin-btn').addEventListener('click', async ()=>{
+  const email = document.getElementById('email').value.trim();
+  const pass = document.getElementById('password').value.trim();
+  if(!email || !pass){ alert('Provide email and password'); return; }
+  try{
+    const res = await firebase.auth().signInWithEmailAndPassword(email, pass);
+    const user = res.user;
+    localStorage.setItem(USER_KEY, JSON.stringify({ email: user.email, uid: user.uid }));
+    currentUser = { email: user.email, uid: user.uid };
+    updateAccountUI();
+    loginModal.style.display='none'; overlay.style.display='none';
+    alert('Signed in.');
+    renderConvos();
+    const convsSnap = await firebase.firestore().collection('users').doc(currentUser.uid).collection('convos').orderBy('created','desc').limit(1).get();
+    if(!convsSnap.empty){ openConvo(convsSnap.docs[0].id); }
+  }catch(err){ alert('Sign in error: ' + err.message); }
+});
+
+signoutLink.addEventListener('click', async ()=>{
+  await firebase.auth().signOut();
+  localStorage.removeItem(USER_KEY);
+  currentUser = null;
+  accountName.textContent = 'Not signed in';
+  signoutLink.style.display='none';
+  deleteMemoryLink.style.display='none';
+  showSidebar(false);
+  chatBox.innerHTML='';
+  currentConvoId = null;
+  currentConvoIsRemote = false;
+});
+
+deleteMemoryLink.addEventListener('click', async ()=>{
+  if(!currentUser) return;
+  if(!confirm('Delete all stored conversations for this account?')) return;
+  const convsRef = firebase.firestore().collection('users').doc(currentUser.uid).collection('convos');
+  const snap = await convsRef.get();
+  const batch = firebase.firestore().batch();
+  snap.forEach(d=>{ batch.delete(convsRef.doc(d.id)); });
+  await batch.commit();
+  renderConvos();
+  chatBox.innerHTML='';
+  currentConvoId = null;
+  currentConvoIsRemote = false;
+  showSidebar(false);
+});
+
+/* ======= Convos rendering ======= */
+async function renderConvos(){
+  convosEl.innerHTML = '';
+  if(currentUser){
+    const snap = await firebase.firestore().collection('users').doc(currentUser.uid).collection('convos').orderBy('created','asc').get();
+    snap.forEach(doc=>{
+      const el = document.createElement('div');
+      el.className = 'convo-item';
+      el.dataset.id = doc.id;
+      el.textContent = doc.data().topic || '(untitled)';
+      convosEl.appendChild(el);
+    });
+  } else {
+    const convos = loadConvosForUserLocal('guest');
+    convos.forEach(c=>{
+      const el = document.createElement('div');
+      el.className = 'convo-item';
+      el.dataset.id = c.id;
+      el.textContent = c.topic || '(untitled)';
+      convosEl.appendChild(el);
+    });
+  }
+}
+
+/* ======= Open conversation ======= */
+async function openConvo(id){
+  chatBox.innerHTML = '';
+  currentConvoId = id;
+  if(currentUser){
+    currentConvoIsRemote = true;
+    const msgsSnap = await firebase.firestore().collection('users').doc(currentUser.uid).collection('convos').doc(id).collection('messages').orderBy('ts','asc').get();
+    msgsSnap.forEach(doc=>{
+      const d = doc.data();
+      appendMsg(d.sender === 'user' ? 'user' : 'bot', d.text, false, d.ts ? new Date(d.ts.toDate()).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '');
+    });
+  } else {
+    currentConvoIsRemote = false;
+    const convs = loadConvosForUserLocal('guest');
+    const conv = convs.find(c => c.id === id);
+    if(conv){ conv.messages.forEach(m=>{ appendMsg(m.sender==='user'?'user':'bot', m.text, false, m.ts || ''); }); }
+  }
+}
+
+/* ======= append messages ======= */
+function appendMsg(kind, text, typed=true, explicitTime=''){
+  const el = document.createElement('div');
+  el.className = 'msg ' + (kind==='user' ? 'user' : 'bot');
+  chatBox.appendChild(el);
+
+  const timeEl = document.createElement('div');
+  timeEl.className = 'msg-time';
+  timeEl.textContent = explicitTime || new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+
+  if(kind === 'bot' && typed){
+    const words = text.split(' ');
+    let i = 0;
+    const interval = setInterval(()=>{
+      if(i >= words.length){ clearInterval(interval); el.appendChild(timeEl); chatBox.scrollTop = chatBox.scrollHeight; return; }
+      el.textContent += (i===0 ? '' : ' ') + words[i];
+      i++;
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }, 40);
+  } else { el.textContent = text; el.appendChild(timeEl); }
+
+  chatBox.scrollTop = chatBox.scrollHeight;
+  return el;
+}
+
+function showTypingIndicator(){
+  const el = document.createElement('div');
+  el.className = 'typing-indicator';
+  el.innerHTML = '<div class="dots"><span></span><span></span><span></span></div>';
+  chatBox.appendChild(el);
+  chatBox.scrollTop = chatBox.scrollHeight;
+  return el;
+}
+
+/* ======= Send message (merged & cleaned) ======= */
+async function sendMessage(){
+  const txt = input.value.trim();
+  if(!txt) return;
+
+  // update topic if untitled
+  if(currentConvoIsRemote && currentConvoId){
+    const convoRef = firebase.firestore().collection('users').doc(currentUser.uid).collection('convos').doc(currentConvoId);
+    const convoSnap = await convoRef.get();
+    if(convoSnap.exists && convoSnap.data().topic==='(untitled)'){
+      const newTopic = txt.split(' ').slice(0,5).join(' ');
+      await convoRef.update({ topic: newTopic });
+      renderConvos();
+    }
+  }
+
+  // append user
+  appendMsg('user', txt);
+  if(currentUser && currentConvoIsRemote){
+    await firebase.firestore().collection('users').doc(currentUser.uid).collection('convos').doc(currentConvoId).collection('messages').add({
+      sender:'user', text:txt, ts: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } else if(!currentUser){
+    let convs = loadConvosForUserLocal('guest');
+    let conv = convs.find(c=>c.id===currentConvoId);
+    if(conv){ conv.messages.push({ sender:'user', text:txt, ts:new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) }); saveConvosForUserLocal('guest', convs); }
+  }
+
+  input.value='';
+
+  // show typing
+  const indicator = showTypingIndicator();
+
+  try{
+    // call only your backend now (removed direct Gemini key)
+    const res = await fetch('/api/chat',{
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ message: txt })
+    });
+    const data = await res.json();
+    const reply = data.reply || '⚠️ No response';
+
+    indicator.remove();
+    appendMsg('bot', reply, true);
+
+    if(currentUser && currentConvoIsRemote && currentConvoId){
+      await firebase.firestore().collection('users').doc(currentUser.uid).collection('convos').doc(currentConvoId).collection('messages').add({
+        sender:'bot', text:reply, ts: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    } else if(!currentUser){
+      let convs = loadConvosForUserLocal('guest');
+      let conv = convs.find(c=>c.id===currentConvoId);
+      if(conv){ conv.messages.push({ sender:'bot', text:reply, ts:new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) }); saveConvosForUserLocal('guest', convs); renderConvos(); }
+    }
+
+  }catch(err){
+    indicator.remove();
+    appendMsg('bot','❌ Error: '+(err.message||err), false);
+  }
+}
+
+/* ======= Account UI ======= */
+function updateAccountUI(){
+  const stored = localStorage.getItem(USER_KEY);
+  if(stored){
+    const u = JSON.parse(stored);
+    currentUser = u;
+    accountName.textContent = u.email;
+    openLoginLink.style.display='none';
+    signoutLink.style.display='block';
+    deleteMemoryLink.style.display='block';
+    renderConvos();
+  } else {
+    accountName.textContent = 'Not signed in';
+    openLoginLink.style.display='block';
+    signoutLink.style.display='none';
+    deleteMemoryLink.style.display='none';
+    convosEl.innerHTML='';
+  }
+}
+
+document.getElementById('overlay').style.display='none';
+document.getElementById('login-modal').style.display='none';
+
+input.addEventListener('keydown', (e)=>{ if(e.key==='Enter') sendMessage(); });
+sendBtn.addEventListener('click', sendMessage);
+
+updateAccountUI();
+
+window.addEventListener('load', async ()=>{
+  setTimeout(()=>{ splash.style.display='none'; }, 2200);
+  firebase.auth().onAuthStateChanged(async (u)=>{
+    if(u){
+      currentUser = { email:u.email, uid:u.uid };
+      localStorage.setItem(USER_KEY, JSON.stringify(currentUser));
+      updateAccountUI();
+      const convsSnap = await firebase.firestore().collection('users').doc(currentUser.uid).collection('convos').orderBy('created','desc').limit(1).get();
+      if(!convsSnap.empty){ openConvo(convsSnap.docs[0].id); }
+    } else {
+      const stored = localStorage.getItem(USER_KEY);
+      if(stored){
+        currentUser = JSON.parse(stored);
+        updateAccountUI();
+        const convs = loadConvosForUserLocal(currentUser.email);
+        if(convs.length) openConvo(convs[convs.length-1].id);
+      } else { updateAccountUI(); }
+    }
+  });
+});
+
+sidebar.addEventListener('click',(e)=>{
+  const clickable = e.target.closest('.btn, .link, .convo-item');
+  if(clickable) showSidebar(false);
+});
+</script>
+</body>
+</html>￼Enter
